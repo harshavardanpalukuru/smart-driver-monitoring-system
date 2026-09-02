@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DriveGuard AI | Precision Bounding Box Detection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background: radial-gradient(circle at 10% 20%, #0a0f1e, #030614);
+            color: #eef2ff;
+            min-height: 100vh;
+            line-height: 1.5;
+        }
+
+        /* custom scroll */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #00ffcc88;
+            border-radius: 8px;
+        }
+
+        nav {
+            background: rgba(10, 16, 30, 0.85);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(0, 255, 204, 0.35);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .nav-container {
+            max-width: 1300px;
+            margin: 0 auto;
+            padding: 0 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 74px;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.65rem;
+            letter-spacing: -0.3px;
+            color: #f1f5f9;
+        }
+        .logo-icon {
+            width: 44px;
+            height: 44px;
+            background: linear-gradient(145deg, #00ffcc, #0099ff);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.7rem;
+            box-shadow: 0 5px 12px rgba(0,255,204,0.3);
+        }
+        .badge {
+            background: rgba(0,255,204,0.15);
+            padding: 5px 12px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            border: 0.5px solid #00ffcc60;
+            font-weight: 500;
+        }
+        .main-container {
+            max-width: 1300px;
+            margin: 44px auto 60px;
+            padding: 0 24px;
+        }
+        .hero-title {
+            text-align: center;
+            margin-bottom: 48px;
+        }
+        .hero-title h1 {
+            font-size: 2.9rem;
+            background: linear-gradient(125deg, #ffffff, #8dd0ff, #5ef2da);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        .hero-title p {
+            color: #94a3b8;
+            margin-top: 10px;
+            font-size: 1.1rem;
+        }
+
+        /* CARD LAYOUT */
+        .card {
+            background: rgba(18, 25, 45, 0.85);
+            backdrop-filter: blur(2px);
+            border-radius: 38px;
+            border: 1px solid rgba(0, 255, 204, 0.25);
+            overflow: hidden;
+            box-shadow: 0 25px 40px -15px rgba(0,0,0,0.6);
+            transition: transform 0.2s ease;
+            margin-bottom: 40px;
+        }
+        .card-header {
+            padding: 26px 30px 16px 30px;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.2);
+            background: rgba(10, 16, 28, 0.5);
+        }
+        .card-header h2 {
+            font-size: 1.85rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .card-header p {
+            color: #9aa9c1;
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+        .media-container {
+            padding: 32px 28px;
+            background: #070c17;
+            min-height: 500px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .upload-zone {
+            border: 2px dashed #2dd4bfaa;
+            border-radius: 32px;
+            padding: 56px 24px;
+            text-align: center;
+            cursor: pointer;
+            background: rgba(0, 255, 204, 0.02);
+            transition: all 0.25s;
+            width: 100%;
+        }
+        .upload-zone:hover {
+            border-color: #00ffcc;
+            background: rgba(0, 255, 204, 0.08);
+            transform: scale(1.01);
+        }
+        .upload-zone .upload-icon {
+            font-size: 4.5rem;
+            margin-bottom: 12px;
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+        }
+        .preview-wrapper {
+            width: 100%;
+            text-align: center;
+            background: #050a12;
+            border-radius: 28px;
+            padding: 8px;
+        }
+        .preview-image {
+            max-width: 100%;
+            max-height: 460px;
+            border-radius: 24px;
+            border: 2px solid #00ffcc;
+            box-shadow: 0 10px 28px rgba(0,255,204,0.3);
+            background: #000;
+            object-fit: contain;
+        }
+        .live-feed {
+            width: 100%;
+            max-width: 800px;
+            border-radius: 24px;
+            border: 2px solid #00ffcc;
+            box-shadow: 0 10px 28px rgba(0,255,204,0.3);
+            background: #000;
+        }
+        .button-group {
+            display: flex;
+            gap: 18px;
+            justify-content: center;
+            margin-top: 28px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 12px 32px;
+            border: none;
+            border-radius: 60px;
+            font-weight: 600;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+            letter-spacing: 0.3px;
+        }
+        .btn-primary {
+            background: linear-gradient(100deg, #00ffcc, #0cc0ff);
+            color: #0a0f1e;
+            box-shadow: 0 5px 12px rgba(0,255,204,0.3);
+        }
+        .btn-primary:active { transform: scale(0.97); }
+        .btn-secondary {
+            background: rgba(255,255,255,0.08);
+            color: #e2e8f0;
+            border: 1px solid rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.18);
+            border-color: #00ffcc80;
+        }
+        .btn-danger {
+            background: linear-gradient(100deg, #ff4466, #cc1133);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 22px rgba(0,255,204,0.4);
+        }
+        .btn:disabled {
+            opacity: 0.5;
+            transform: none;
+            cursor: not-allowed;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-block;
+            padding: 6px 14px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        .status-active {
+            background: rgba(0, 255, 100, 0.2);
+            border: 1px solid #00ff64;
+            color: #00ff64;
+        }
+        .status-inactive {
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid #ff4466;
+            color: #ff4466;
+        }
+
+        /* loading overlay refined */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(3, 7, 18, 0.96);
+            backdrop-filter: blur(8px);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .loading-card {
+            background: #111b2c;
+            padding: 38px 60px;
+            border-radius: 48px;
+            text-align: center;
+            border: 1px solid #00ffccaa;
+            box-shadow: 0 20px 35px rgba(0,0,0,0.5);
+        }
+        .spinner {
+            width: 58px;
+            height: 58px;
+            border: 4px solid #1e3a4d;
+            border-top: 4px solid #00ffcc;
+            border-radius: 50%;
+            animation: spin 0.9s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .info-text {
+            font-size: 0.85rem;
+            color: #7e8eb3;
+            margin-top: 16px;
+        }
+        hr {
+            border-color: #1f2a44;
+            margin: 12px 0;
+        }
+
+        .detection-stats {
+            background: rgba(0, 255, 204, 0.05);
+            border-radius: 16px;
+            padding: 12px 20px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 680px) {
+            .card-header h2 { font-size: 1.5rem; }
+            .media-container { padding: 20px; }
+            .btn { padding: 10px 22px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-card">
+            <div class="spinner"></div>
+            <p style="font-size: 1.2rem; font-weight: 500;">🧠 AI is drawing bounding boxes...</p>
+            <p class="info-text">Detecting objects | labels only — clean visual output</p>
+        </div>
+    </div>
+
+    <nav>
+        <div class="nav-container">
+            <div class="logo">
+                <div class="logo-icon">🚦</div>
+                <span>DriveGuard AI</span>
+                <span class="badge">PURE BOXES</span>
+            </div>
+            <div style="font-size: 0.85rem; background: #0f172a60; padding: 5px 12px; border-radius: 30px;">
+                ⚡ label-only detection
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-container">
+        <div class="hero-title">
+            <h1>Smart Driver Monitoring System</h1>
+            <p>AI draws precise bounding boxes + class labels only (no extra warnings)</p>
+        </div>
+
+        <!-- Image Upload Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>
+                    <span>📸</span> Image Upload Detection
+                </h2>
+                <p>Upload one image at a time — boxes with pure labels</p>
+            </div>
+            <div class="media-container">
+                <div style="width:100%;">
+                    <!-- Upload Zone (visible when no image) -->
+                    <div id="uploadArea" class="upload-zone">
+                        <div class="upload-icon">🖼️</div>
+                        <p style="font-size: 1.1rem; font-weight: 500;">Click or drop image here</p>
+                        <p style="font-size: 0.8rem; margin-top: 8px; color: #8f9eb5;">Max 15MB · single file only</p>
+                        <input type="file" id="imageInput" accept="image/jpeg,image/png,image/webp,image/jpg" style="display:none;">
+                        <button class="btn btn-primary" id="selectImageBtn" style="margin-top: 20px;">Browse Files</button>
+                    </div>
+
+                    <!-- Preview & Actions (hidden until upload) -->
+                    <div id="imagePreviewContainer" style="display:none;">
+                        <div class="preview-wrapper">
+                            <img id="previewImg" class="preview-image" alt="Detection preview">
+                        </div>
+                        <div class="button-group">
+                            <button class="btn btn-primary" id="analyzeImageBtn">✨ Detect & Draw Boxes</button>
+                            <button class="btn btn-secondary" id="clearImageBtn">🗑 Replace / Clear</button>
+                        </div>
+                        <div class="info-text" style="text-align: center; margin-top: 18px;">
+                            ⚡ detection adds bounding boxes + class labels | no text overlays
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Live Camera Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>
+                    <span>🎥</span> Live Camera Detection
+                </h2>
+                <p>Real-time bounding boxes + labels | Continuous monitoring</p>
+            </div>
+            <div class="media-container">
+                <div style="width:100%; text-align: center;">
+                    <!-- Live video feed -->
+                    <img id="videoFeed" class="live-feed" style="display:none;" alt="Live Detection Feed">
+                    
+                    <div id="cameraPlaceholder" style="padding: 60px 20px;">
+                        <div class="upload-icon" style="font-size: 4rem;">🎥</div>
+                        <p style="margin-top: 20px; font-size: 1.1rem;">Camera not started</p>
+                        <p class="info-text">Click "Start Camera" to begin real-time detection</p>
+                    </div>
+                    
+                    <div class="button-group" style="margin-top: 20px;">
+                        <button class="btn btn-primary" id="startCameraBtn">🎥 Start Live Camera</button>
+                        <button class="btn btn-danger" id="stopCameraBtn" style="background: linear-gradient(100deg, #ff4466, #cc1133);">⏹️ Stop Camera</button>
+                    </div>
+                    
+                    <div id="detectionStatus" class="detection-stats" style="display:none;">
+                        <div id="statusBadge" class="status-badge status-inactive">⚪ Detection Inactive</div>
+                        <div id="statsInfo" style="margin-top: 10px; font-size: 0.85rem;">
+                            <span id="unsafeCount">0</span> unsafe behaviors detected
+                        </div>
+                    </div>
+                    
+                    <div class="info-text" style="margin-top: 15px;">
+                        🟢 Live feed shows ONLY bounding boxes + labels | Email alerts active in background
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== IMAGE UPLOAD LOGIC ====================
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const selectImageBtn = document.getElementById('selectImageBtn');
+        const previewContainer = document.getElementById('imagePreviewContainer');
+        const previewImg = document.getElementById('previewImg');
+        const analyzeBtn = document.getElementById('analyzeImageBtn');
+        const clearBtn = document.getElementById('clearImageBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+
+        let currentImageFile = null;
+        let isAnalyzing = false;
+
+        function resetToUploadZone() {
+            currentImageFile = null;
+            previewContainer.style.display = 'none';
+            uploadArea.style.display = 'block';
+            previewImg.src = '';
+            imageInput.value = '';
+        }
+
+        function loadSingleImage(file) {
+            if (!file || !file.type.startsWith('image/')) {
+                alert("❌ Please select a valid image file (JPEG, PNG, WEBP).");
+                return false;
+            }
+
+            const maxSize = 15 * 1024 * 1024;
+            if (file.size > maxSize) {
+                alert(`⚠️ Image too large. Maximum size is 15MB. Your file: ${(file.size / (1024*1024)).toFixed(1)}MB`);
+                return false;
+            }
+
+            currentImageFile = file;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                previewImg.src = e.target.result;
+                uploadArea.style.display = 'none';
+                previewContainer.style.display = 'block';
+            };
+            reader.onerror = () => {
+                alert("Failed to read image file.");
+                resetToUploadZone();
+            };
+            reader.readAsDataURL(file);
+            return true;
+        }
+
+        function triggerFileSelect() {
+            imageInput.click();
+        }
+
+        selectImageBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            triggerFileSelect();
+        });
+
+        uploadArea.addEventListener('click', (e) => {
+            if (e.target === selectImageBtn || selectImageBtn.contains(e.target)) return;
+            triggerFileSelect();
+        });
+
+        imageInput.addEventListener('change', (event) => {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+            const selectedFile = files[0];
+            if (currentImageFile) {
+                loadSingleImage(selectedFile);
+            } else {
+                loadSingleImage(selectedFile);
+            }
+        });
+
+        clearBtn.addEventListener('click', () => {
+            resetToUploadZone();
+            isAnalyzing = false;
+        });
+
+        analyzeBtn.addEventListener('click', async () => {
+            if (!currentImageFile) {
+                alert("📁 No image loaded. Please upload an image first.");
+                return;
+            }
+            if (isAnalyzing) {
+                alert("Detection in progress, please wait...");
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('image', currentImageFile);
+
+            isAnalyzing = true;
+            loadingOverlay.style.display = 'flex';
+            analyzeBtn.disabled = true;
+            clearBtn.disabled = true;
+
+            try {
+                const response = await fetch('/analyze_image', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    let errorMsg = `Server error (${response.status})`;
+                    try {
+                        const errData = await response.json();
+                        errorMsg = errData.message || errData.error || errorMsg;
+                    } catch(e) {}
+                    throw new Error(errorMsg);
+                }
+
+                const data = await response.json();
+                if (data.status === 'success' && data.annotated_image) {
+                    previewImg.src = `data:image/jpeg;base64,${data.annotated_image}`;
+                } 
+                else if (data.status === 'error') {
+                    alert(`Detection failed: ${data.message || "unknown error"}`);
+                }
+                else {
+                    alert("Unexpected response from AI engine.");
+                }
+            } catch (err) {
+                console.error("Detection error:", err);
+                let friendlyMsg = err.message || "Connection error. Ensure Flask backend is running on port 5000.";
+                if (friendlyMsg.includes("Failed to fetch")) {
+                    friendlyMsg = "⚠️ Cannot reach server. Make sure Flask backend is active (python app.py).";
+                }
+                alert(friendlyMsg);
+            } finally {
+                loadingOverlay.style.display = 'none';
+                isAnalyzing = false;
+                analyzeBtn.disabled = false;
+                clearBtn.disabled = false;
+            }
+        });
+
+        // Drag & drop for image upload
+        const uploadZoneDiv = document.getElementById('uploadArea');
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadZoneDiv.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+        
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadZoneDiv.addEventListener(eventName, () => {
+                uploadZoneDiv.style.borderColor = '#0ff';
+                uploadZoneDiv.style.background = 'rgba(0, 255, 204, 0.12)';
+            });
+        });
+        
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadZoneDiv.addEventListener(eventName, () => {
+                uploadZoneDiv.style.borderColor = '#2dd4bfaa';
+                uploadZoneDiv.style.background = 'rgba(0, 255, 204, 0.02)';
+            });
+        });
+        
+        uploadZoneDiv.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                const droppedFile = files[0];
+                if (droppedFile.type.startsWith('image/')) {
+                    loadSingleImage(droppedFile);
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(droppedFile);
+                    imageInput.files = dataTransfer.files;
+                } else {
+                    alert("Only image files are allowed for bounding box detection.");
+                }
+            }
+        });
+
+        // ==================== LIVE CAMERA LOGIC ====================
+        const videoFeed = document.getElementById('videoFeed');
+        const cameraPlaceholder = document.getElementById('cameraPlaceholder');
+        const startCameraBtn = document.getElementById('startCameraBtn');
+        const stopCameraBtn = document.getElementById('stopCameraBtn');
+        const detectionStatusDiv = document.getElementById('detectionStatus');
+        const statusBadge = document.getElementById('statusBadge');
+        const unsafeCountSpan = document.getElementById('unsafeCount');
+        
+        let isCameraActive = false;
+        let statusInterval = null;
+
+        // Function to fetch detection status
+        async function fetchDetectionStatus() {
+            if (!isCameraActive) return;
+            
+            try {
+                const response = await fetch('/detection_status');
+                const data = await response.json();
+                
+                if (data.status === 'active') {
+                    statusBadge.className = 'status-badge status-active';
+                    statusBadge.innerHTML = '🟢 Detection Active';
+                    unsafeCountSpan.textContent = data.total_unsafe_count || data.unsafe_behaviors?.length || 0;
+                    
+                    // Optional: Show unsafe behaviors if needed
+                    if (data.unsafe_behaviors && data.unsafe_behaviors.length > 0) {
+                        unsafeCountSpan.style.color = '#ff4466';
+                    } else {
+                        unsafeCountSpan.style.color = '#00ff64';
+                    }
+                } else {
+                    statusBadge.className = 'status-badge status-inactive';
+                    statusBadge.innerHTML = '⚪ Detection Inactive';
+                    unsafeCountSpan.textContent = '0';
+                }
+            } catch (error) {
+                console.error('Error fetching detection status:', error);
+            }
+        }
+
+        // Start live camera
+        startCameraBtn.addEventListener('click', async () => {
+            if (isCameraActive) {
+                alert("Camera is already active!");
+                return;
+            }
+            
+            try {
+                // Test if backend is reachable
+                const testResponse = await fetch('/detection_status');
+                if (!testResponse.ok) {
+                    throw new Error('Backend not reachable');
+                }
+                
+                // Display video feed
+                videoFeed.style.display = 'block';
+                videoFeed.src = '/video_feed';
+                cameraPlaceholder.style.display = 'none';
+                detectionStatusDiv.style.display = 'block';
+                isCameraActive = true;
+                
+                // Start polling for status updates
+                if (statusInterval) clearInterval(statusInterval);
+                statusInterval = setInterval(fetchDetectionStatus, 1000);
+                
+                console.log('✅ Live camera started');
+            } catch (error) {
+                console.error('Error starting camera:', error);
+                alert('⚠️ Cannot connect to server. Make sure Flask backend is running on port 5000');
+            }
+        });
+        
+        // Stop live camera
+        stopCameraBtn.addEventListener('click', async () => {
+            if (!isCameraActive) {
+                alert("Camera is not active!");
+                return;
+            }
+            
+            try {
+                // Stop detection on backend
+                await fetch('/stop_detection', { method: 'POST' });
+                
+                // Clear video feed
+                videoFeed.src = '';
+                videoFeed.style.display = 'none';
+                cameraPlaceholder.style.display = 'block';
+                detectionStatusDiv.style.display = 'none';
+                isCameraActive = false;
+                
+                // Stop polling
+                if (statusInterval) {
+                    clearInterval(statusInterval);
+                    statusInterval = null;
+                }
+                
+                console.log('✅ Camera stopped');
+            } catch (error) {
+                console.error('Error stopping camera:', error);
+                // Still stop locally even if backend call fails
+                videoFeed.src = '';
+                videoFeed.style.display = 'none';
+                cameraPlaceholder.style.display = 'block';
+                detectionStatusDiv.style.display = 'none';
+                isCameraActive = false;
+                if (statusInterval) {
+                    clearInterval(statusInterval);
+                    statusInterval = null;
+                }
+            }
+        });
+        
+        // Clean up on page unload
+        window.addEventListener('beforeunload', async () => {
+            if (isCameraActive) {
+                try {
+                    await fetch('/stop_detection', { method: 'POST' });
+                } catch(e) {
+                    console.log('Cleanup error:', e);
+                }
+            }
+        });
+
+        console.log("✅ Ready: Both Image Upload and Live Camera modes active");
+        console.log("📸 Image Upload: Single image detection with bounding boxes");
+        console.log("🎥 Live Camera: Real-time detection with email alerts in background");
+    </script>
+</body>
+</html>
